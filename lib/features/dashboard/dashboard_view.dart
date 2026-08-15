@@ -689,16 +689,7 @@ class _EquityCurveSection extends StatelessWidget {
       }
     }
 
-    // Scrollable width calculation: each spot gets 22 pixels width
-    final double spotSpacing = 22.0;
-    final double computedWidth = spots.length * spotSpacing;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    
-    // Padding: Card (16x2) + Main Layout (16x2) = 64px. Y-axis is 50px.
-    // Net space for chart = screenWidth - 114.
-    final double availableChartWidth = screenWidth - 114;
-    final double chartWidth = computedWidth > availableChartWidth ? computedWidth : availableChartWidth;
-
+    // Calculate interval for X-axis
     double xInterval = 2.0;
     if (spots.length > 150) {
       xInterval = 20.0;
@@ -708,168 +699,122 @@ class _EquityCurveSection extends StatelessWidget {
       xInterval = 5.0;
     }
 
-    return Row(
-      children: [
-        // 1. Fixed Y-Axis
-        SizedBox(
-          width: 50,
-          height: 250,
-          child: LineChart(
-            LineChartData(
-              minX: 0,
-              maxX: 1,
-              minY: adjustedMinY,
-              maxY: adjustedMaxY,
-              gridData: const FlGridData(show: false),
-              borderData: FlBorderData(show: false),
-              lineBarsData: [],
-              titlesData: FlTitlesData(
-                show: true,
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 22, // Align with chart's bottomTitles height
-                    getTitlesWidget: (_, __) => const SizedBox(),
+    return LineChart(
+      LineChartData(
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (touchedSpot) => AppColors.surface,
+            tooltipBorder: const BorderSide(color: AppColors.border, width: 1.5),
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            tooltipRoundedRadius: 8,
+            getTooltipItems: (List<LineBarSpot> touchedSpots) {
+              return touchedSpots.map((LineBarSpot touchedSpot) {
+                return LineTooltipItem(
+                  Formatters.formatCurrency(touchedSpot.y, account.currency),
+                  const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
-                ),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 50,
-                    interval: yInterval,
-                    getTitlesWidget: (value, meta) {
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        space: 4,
-                        child: Text(
-                          _abbreviateAmount(value, account.currency),
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
-                          textAlign: TextAlign.end,
-                        ),
-                      );
-                    },
+                );
+              }).toList();
+            },
+          ),
+        ),
+        minX: 0,
+        maxX: (spots.length - 1).toDouble(),
+        minY: adjustedMinY,
+        maxY: adjustedMaxY,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: yInterval,
+          getDrawingHorizontalLine: (value) => const FlLine(
+            color: AppColors.border,
+            strokeWidth: 1,
+            dashArray: [5, 5],
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 50,
+              interval: yInterval,
+              getTitlesWidget: (value, meta) {
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  space: 4,
+                  child: Text(
+                    _abbreviateAmount(value, account.currency),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                    textAlign: TextAlign.end,
                   ),
-                ),
-              ),
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 22,
+              interval: xInterval,
+              getTitlesWidget: (value, meta) {
+                if (value == 0) {
+                  return SideTitleWidget(
+                    axisSide: meta.axisSide,
+                    child: const Text('Start', style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                  );
+                }
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  child: Text(
+                    '#${value.toInt()}',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                  ),
+                );
+              },
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        // 2. Scrollable Chart Body
-        Expanded(
-          child: ClipRect(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: chartWidth,
-                height: 250,
-                child: LineChart(
-                  LineChartData(
-                    lineTouchData: LineTouchData(
-                      touchTooltipData: LineTouchTooltipData(
-                        getTooltipColor: (touchedSpot) => AppColors.surface,
-                        tooltipBorder: const BorderSide(color: AppColors.border, width: 1.5),
-                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        tooltipRoundedRadius: 8,
-                        getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                          return touchedSpots.map((LineBarSpot touchedSpot) {
-                            return LineTooltipItem(
-                              Formatters.formatCurrency(touchedSpot.y, account.currency),
-                              const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            );
-                          }).toList();
-                        },
-                      ),
-                    ),
-                    minX: 0,
-                    maxX: (spots.length - 1).toDouble(),
-                    minY: adjustedMinY,
-                    maxY: adjustedMaxY,
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: yInterval,
-                      getDrawingHorizontalLine: (value) => const FlLine(
-                        color: AppColors.border,
-                        strokeWidth: 1,
-                        dashArray: [5, 5],
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      show: true,
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), // Hidden as it is fixed on the left
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 22,
-                          interval: xInterval,
-                          getTitlesWidget: (value, meta) {
-                            if (value == 0) {
-                              return SideTitleWidget(
-                                axisSide: meta.axisSide,
-                                child: const Text('Start', style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
-                              );
-                            }
-                            return SideTitleWidget(
-                              axisSide: meta.axisSide,
-                              child: Text(
-                                '#${value.toInt()}',
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    borderData: FlBorderData(
-                      show: true,
-                      border: const Border(
-                        bottom: BorderSide(color: AppColors.border, width: 1),
-                        left: BorderSide(color: AppColors.border, width: 1),
-                      ),
-                    ),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: spots,
-                        isCurved: true,
-                        curveSmoothness: 0.2,
-                        gradient: const LinearGradient(
-                          colors: [
-                            AppColors.primary,
-                            AppColors.accent,
-                          ],
-                        ),
-                        barWidth: 3,
-                        isStrokeCapRound: true,
-                        dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primary.withOpacity(0.25),
-                              AppColors.primary.withOpacity(0.0),
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        borderData: FlBorderData(
+          show: true,
+          border: const Border(
+            bottom: BorderSide(color: AppColors.border, width: 1),
+            left: BorderSide(color: AppColors.border, width: 1),
+          ),
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.2,
+            gradient: const LinearGradient(
+              colors: [
+                AppColors.primary,
+                AppColors.accent,
+              ],
+            ),
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withOpacity(0.25),
+                  AppColors.primary.withOpacity(0.0),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
