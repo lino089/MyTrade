@@ -8,8 +8,11 @@ class SupabaseManager {
 
   Future<void> initialize() async {
     try {
-      final String url = dotenv.env['SUPABASE_URL'] ?? '';
-      final String anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+      const envUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+      const envAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+
+      final String url = envUrl.isNotEmpty ? envUrl : (dotenv.env['SUPABASE_URL'] ?? '');
+      final String anonKey = envAnonKey.isNotEmpty ? envAnonKey : (dotenv.env['SUPABASE_ANON_KEY'] ?? '');
 
       await Supabase.initialize(
         url: url,

@@ -8,8 +8,12 @@ import 'core/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Load environment variables
-  await dotenv.load(fileName: ".env");
+  // Load environment variables (ignore error if not found, e.g. in Vercel deployment)
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("No .env file found. Proceeding with environment variables.");
+  }
   
   // Initialize Supabase Manager (checks SharedPreferences and connects to database if configured)
   await SupabaseManager.instance.initialize();
